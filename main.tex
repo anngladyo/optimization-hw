@@ -1,0 +1,267 @@
+\documentclass{article}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{algorithm}
+\usepackage{algorithmicx}
+\usepackage{algpseudocode}
+\usepackage{mathtools}
+\usepackage{graphicx}
+\usepackage{subcaption}
+\usepackage[a4paper, margin=1in]{geometry} 
+
+
+\title{Gradient Methods for Semi-Supervised Learning}
+\author{Anna Glado, Aleksandra Maslova, Alisa Snezskaia}
+\date{May 2025}
+
+\begin{document}
+\pagenumbering{arabic}
+\maketitle
+
+\clearpage
+\tableofcontents
+\clearpage
+
+\section{Introduction}
+This homework aimed to analyze the performances of three optimization algorithms (Gradient Descent, Block Coordinate Gradient Descent with Gauss-Southwell Rule, Coordinate Minimization) for the semi-supervised learning problem. The problem was formulated as a binary classification (classes 1 and -1) with a small amount of annotated samples. The paradigm for labeling was defined as 'similar features = similar labels'. \\
+
+\noindent The problem seems particularly relevant, as researchers often face datasets with unlabeled data. 
+
+\section{Problem Description}
+\subsection{Synthetic Dataset Creation}
+For the first part of the comparison between the specified optimization algorithms, the synthetic data set was created. It consisted of two clusters of equal size (250 points per cluster), for each cluster labels were assigned to the 10\% fraction while the rest remained unlabeled.
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.5\textwidth]{synt_ds.png}
+    \caption{Synthetic Dataset}
+    \label{fig:my_image}
+\end{figure}
+
+\subsection{Similarity Measure}
+Following the paradigm 'similar features = similar labels', the Gaussian kernel was chosen to assign higher weight to the samples that are close to each other and vice versa smaller weight to those samples that are far away from each other. 
+
+\noindent The Gaussian kernel is defined as follows:
+\[
+K(x, y) = \exp\left( -\gamma \, \|x - y\|^2 \right)
+\]
+with gamma set equal to 1.0.
+
+\subsection{Loss Function}
+The loss function was provided as follows:
+\[
+\sum_{i=1}^{l} \sum_{j=1}^{u} w_{ij} \left( y^{(j)} - \hat{y}^{(i)} \right)^2
++ \frac{1}{2} \sum_{i=1}^{u} \sum_{j=1}^{u} \widehat{w}_{ij} \left( y^{(j)} - y^{(i)} \right)^2
+\]
+where \( w_{ij} \) represents the similarity matrix between a labeled sample and a unlabeled sample; \( \widehat{w}_{ij} \) represents similarity matrix between unlabeled samples. \\ 
+
+\noindent The loss function is convex, since it is the result of the summation of two convex functions.
+\subsection{Gradient of the Loss Function}
+The gradient was given as follows:
+\[
+\nabla_{y^{(j)}} f(y) = 
+2 \sum_{i=1}^{l} w_{ij} \left( y^{(j)} - \hat{y}^{(i)} \right) +
+2 \sum_{i=1}^{u} \widehat{w}_{ij} \left( y^{(j)} - y^{(i)} \right)
+\]
+
+\subsection{Hessian}
+The Hessian H of the loss function is needed for calculating the Lipschitz constant (L), which was further used for setting the fixed step size, and thus was calculated as follows:
+\[
+H =
+\begin{cases}
+2 \sum_{i=1}^{l} w_{ij} + 2 \sum_{i=1}^{u} \widehat{w}_{ij}, & \text{if } i = j \\
+-2 \widehat{w}_{ij}, & \text{if } i \neq j
+\end{cases}
+\]
+
+\subsection{Evaluation Criteria}
+To evaluate the performance of the methods, the accuracy vs. CPU time criterion was chosen.  
+
+\subsection{Real Dataset}
+
+\section{Methods}
+\subsection{Gradient Descent}
+The core idea of the algorithm is to compute the descent direction at the current point, take a step in that direction, and then update the vector of point values accordingly.
+\begin{algorithm}
+\caption{Gradient Descent}\label{alg:full_gd}
+\begin{algorithmic}[1]
+\State Initialize $X_1 \in \mathbb{R}^{d \times k}$
+\For{$k = 1, 2, \ldots$}
+    \If{$X_k \in X^*$}
+        \State \textbf{stop} (Optimality conditions met)
+    \Else
+        \State $X_{k+1} \gets X_k - \alpha_k \nabla f(X_k)$
+    \EndIf
+\EndFor
+\end{algorithmic}
+\end{algorithm}
+
+\subsubsection{Gradient Descent with Fixed Learning Rate}
+For the fixed step size the Lipschitz constant was calculated as the highest absolute eigenvalue of the Hessian matrix, and the step size was set to 1/L.
+
+\subsubsection{Gradient Descent with Armijo Rule}
+According to the Armijo Rule, the learning rate is define as follows:
+\[
+\alpha = \delta^m \Delta_k
+\]
+which is found iteratively until the inequality
+\[
+f(x_k + \alpha d_k) \leq f(x_k) + \gamma \alpha \nabla f(x_k)^\top d_k
+\]
+is satisfied and set \( \alpha_k = \alpha \).  The parameters \(\delta \in (0, 1)\) and \(\gamma \in \left(0, \frac{1}{2}\right)\) were set to the following values: \(\delta = 0.5 \) and \(\gamma = 0.1\).
+
+
+\subsection{Block Coordinate Gradient Descent with Gauss-Southwell Rule}
+
+Block Coordinate Gradient Descent (BCGD) is a general algorithm for solving unconstrained optimization problems. Instead of updating the entire vector at once, BCGD updates only a subset of coordinates at each step, following specific rules. The key idea is to partition the vector into b blocks of predefined size and apply gradient descent selectively to these individual blocks.
+
+\begin{algorithm}
+\caption{Block Coordinate Gradient Descent (BCGD)}\label{alg:bcgd}
+\begin{algorithmic}[1]
+\State Initialize $x_1 \in \mathbb{R}^{d \times k}$
+\For{$k = 1, 2, \ldots$}
+    \If{$x_k \in X^*$}
+        \State \textbf{stop} (Optimality conditions met)
+    \Else
+        \State Select $i_k$ (block index) according to some \textbf{rule}
+        \State Update $x_{k+1} \gets x_k - \alpha_k \left[\nabla f(x_k)\right]_{i_k}$
+    \EndIf
+\EndFor
+\end{algorithmic}
+\end{algorithm}
+\noindent According to the Gauss-Southwell Rule, at each iteration the block i is chosen so that:
+$$i_k = {\arg\max}_j ||\nabla_j f(x_k)||$$
+
+\noindent As stated in the task, the dimension of the block was set equal to 1, which meant that the number of blocks was equal to the number of unlabeled points.
+\subsection{Coordinate Minimization}
+Coordinate Minimization Algorithm is an iterative method for solving optimization problems by minimizing the objective function with respect to one coordinate at a time, while keeping the others fixed. At each step, the algorithm cycles through the coordinates, updating each based on a simple one-dimensional optimization. This approach is particularly effective when the objective function is separable or when coordinate-wise updates are computationally inexpensive.
+\begin{algorithm}
+\caption{Coordinate Minimization Method}
+\label{alg:coord_min}
+\begin{algorithmic}[1]
+\State Choose initial point $x_1 \in \mathbb{R}^n$
+\For{$k = 1, 2, \ldots$}
+    \If{$x_k$ satisfies stopping condition}
+        \State \textbf{stop}
+    \Else
+    \State Pick coordinate $i \in \{1, \ldots, n\}$
+    \State Solve: 
+    \[
+    s^{(i)} = \arg\min_{x^{(i)} \in \mathbb{R}} f\big(x^{(i)}, x_{-i}\big)
+    \]
+    \State Build $x_{k+1}$ using $s^{(i)}$
+    \EndIf
+\EndFor
+\end{algorithmic}
+\end{algorithm}
+
+\noindent Following the Gauss-Seidel Scheme, $x_{-i}$ was set to the most up-to-date value:
+\[
+x_{-i} = (s_{k}^{(1)}, \ldots, s_{k}^{(i-1)}, x_{k}^{(i+1)}, \ldots, x_{k}^{(n)})
+\]
+And the update performs as $x_{k+1}^{(i)}$ = $s_{k}^{(i)}$.
+
+\newpage
+\section{Results}
+\subsection{Results on Synthetic Dataset}
+\subsubsection{Gradient Descent}
+The two subtypes of Gradient Descent were tested, the loss over iteration was plotted. 
+\begin{figure}[h]
+    \centering
+    \begin{subfigure}{0.45\textwidth}  % Adjust width as necessary
+        \includegraphics[width=\linewidth]{GD_Loss_Fixed_LS.png}  % Replace with your image file
+        \caption{Loss over Iteration Number for Gradient Descent with Fixed Step Size}
+        \label{fig:image1}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}{0.45\textwidth}  % Adjust width as necessary
+        \includegraphics[width=\linewidth]{GD_Loss_Armijo_LS.png}  % Replace with your image file
+        \caption{Loss over Iteration Number for Gradient Descent with Armijo Line Search}
+        \label{fig:image2}
+    \end{subfigure}
+    \caption{Comparison of Loss vs. Iterations criterion for Gradient Descent Methods}
+    \label{fig:side_by_side}
+\end{figure}
+
+\noindent It can be noticed, that Armijo Line Search allowed for much faster convergence with respect to the Fixed Step Size based on Lipschitz constant.
+
+\subsubsection{Block Coordinate Gradient Descent with Gauss-Southwell Rule}
+
+BCGD required the highest number of iterations among all the implemented methods to converge to an optimal solution, as seen in Figure 3.
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.5\textwidth]{BCGD_Loss.png}
+    \caption{Loss vs. Iterations criterion for BCGD with GS Rule}
+    \label{fig:my_image}
+\end{figure}
+
+\subsubsection{Coordinate Minimization}
+Coordinate Minimization Algorithm reached the fastest convergence among all the approaches tested.
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.5\textwidth]{CM_Loss.png}
+    \caption{Loss vs. Iterations criterion for Coordinate Minimization}
+    \label{fig:my_image}
+\end{figure}
+
+\subsection{Results on Real Dataset}
+
+\subsubsection{Dataset Description}
+For testing the optimization algorithms on real data, we selected the \textbf{Diabetes dataset} from Kaggle. It consists of medical diagnostic measurements for 768 patients and a binary label indicating the presence or absence of diabetes. The dataset includes 8 numerical features such as glucose level, BMI, and blood pressure.
+
+\noindent To prepare the data:
+\begin{itemize}
+    \item The dataset was standardized using \texttt{StandardScaler}.
+    \item Dimensionality was reduced to 2 using \textbf{PCA}, simplifying visualization and computation.
+    \item 10\% of the samples were labeled, while the rest remained unlabeled for the semi-supervised setup.
+\end{itemize}
+
+\subsubsection{Performance Evaluation}
+Each of the implemented optimization methods (Gradient Descent, Block Coordinate Gradient Descent, Coordinate Minimization) was applied using the same initial conditions and similarity kernel as used for the synthetic dataset.
+
+\noindent Performance was evaluated via \textbf{accuracy vs. CPU time}, shown in Figure~\ref{fig:real_data_results}.
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.6\textwidth]{accuracy_vs_time.png} % Replace with actual filename
+    \caption{Comparison of Accuracy vs CPU Time for Different Methods (Real Dataset)}
+    \label{fig:real_data_results}
+\end{figure}
+
+\noindent \textbf{Key observations}:
+\begin{itemize}
+    \item \textbf{Gradient Descent with Armijo Line Search} converged faster and achieved higher accuracy with fewer iterations compared to the fixed step size.
+    \item \textbf{Coordinate Minimization} had the shortest run time and fastest convergence, but in some runs, it showed slightly lower accuracy.
+    \item \textbf{Block Coordinate Gradient Descent} was the slowest and showed lower accuracy, though still converging.
+\end{itemize}
+
+\noindent The RBF kernel was used for computing similarity. During experiments, we observed discrepancies when using custom vs. library RBF implementations, likely due to internal default parameters.
+
+\noindent Overall, Armijo Line Search offered the best trade-off between performance and computation time.
+
+
+\section{Conclusions}
+
+In this project, we explored and compared the effectiveness of three optimization algorithms — Gradient Descent (GD), Block Coordinate Gradient Descent (BCGD), and Coordinate Minimization — in the context of semi-supervised learning for binary classification.
+
+\noindent The main conclusions are as follows:
+
+\begin{itemize}
+    \item \textbf{Gradient Descent with Armijo Line Search} consistently provided the best balance between convergence speed and classification accuracy, outperforming the fixed step size variant in both synthetic and real datasets.
+    
+    \item \textbf{Coordinate Minimization} demonstrated the fastest runtime and fewest iterations to converge on the synthetic dataset. Although it occasionally underperformed slightly in accuracy on the real dataset, its computational efficiency makes it a compelling choice in scenarios with limited resources.
+    
+    \item \textbf{Block Coordinate Gradient Descent} required the highest number of iterations and longest execution time, especially on the real dataset. However, its modular structure may still be beneficial for very high-dimensional problems where only partial updates are feasible.
+    
+    \item The \textbf{evaluation criterion}, based on accuracy vs. CPU time, proved effective for comparing the practical usability of the methods beyond theoretical convergence properties.
+    
+    \item \textbf{Kernel-based similarity measures}, particularly the Gaussian (RBF) kernel, played a central role in capturing the structure of the data. Care must be taken with implementation specifics, as subtle changes (e.g., default parameters) can affect outcomes.
+
+\end{itemize}
+
+\noindent Overall, the results underscore the importance of adaptive step sizes and efficient coordinate update strategies in semi-supervised optimization. These methods can be further extended and evaluated on larger, more complex datasets or multi-class scenarios in future work.
+
+
+\end{document}
