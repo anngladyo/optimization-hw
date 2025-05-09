@@ -1,0 +1,37 @@
+Introduction
+• We have l labeled examples (xi,y ̃i) • We have u unlabeled examples xj
+• Goal: Find yj!
+In real-world projects:
+i = 1,...,l. j = 1,...,u.
+• Easy to get data
+• Hard to get labels → Huge number of unlabeled data
+We consider problems with 2 classes, labels {−1, +1}. Paradigm: Similar features = Similar labels
+• Define weights wij: similarity between labeled example i and unlabeled example j. • Define weights w ̃ij: similarity between unlabeled examples i and j.
+Solve the problem:
+2
+• Term 1: Unlabeled examples similar to close labeled ones.
+• Term 2: Similar unlabeled examples get similar labels. How to choose weights?
+• Use some similarity measures based on features.
+lu 1uu 
+min XXwij(yj −y ̃i)2 +
+XXw ̃ij(yi −yj)2 i=1 j=1
+
+y∈Ru 
+i=1 j=1
+ 1. Randomly generate a set of points in 2D and give labels to a small subset of those points.
+2. Choose a proper similarity measure to define wij.
+3. Consider the problem ∗.
+4. Solve problem ∗ with:
+a) Gradient descent b) Block with GS rule
+c) Coordinate minimization
+For (b) use blocks of dimension 1.
+5. Choose a publicly available dataset and test the methods on this.
+6. Analyze accuracy vs. runtime (plots).
+7. Describe what you did in a PDF file.
+8. Upload files on Moodle (see tile “Homework”).
+Free Tips
+Gradient with respect to yi:
+∇yif(y) = 2Xwij(yi −y ̃j)+2Xw ̃ij(yi −yj)
+i̸=j
+i̸=j
+1
